@@ -1,209 +1,171 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalkulator Suara Admin Frozen Food</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 30px;
-        background-color: #f4f6f9;
-      }
-      .container {
-        max-width: 800px;
-        margin: auto;
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-      button {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        font-size: 16px;
-        border-radius: 5px;
-        cursor: pointer;
-        width: 100%;
-        font-weight: bold;
-      }
-      button:disabled {
-        background-color: #cccccc;
-      }
-      .status {
-        margin: 15px 0;
-        font-style: italic;
-        color: #666;
-        text-align: center;
-      }
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f6f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background-color: #28a745; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .status { margin: 15px 0; font-style: italic; color: #666; text-align: center; font-weight: bold; }
+        
+        /* Perbaikan Tabel agar Bisa Di-geser/Scroll ke Samping di HP */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; min-width: 550px; } 
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #0056b3; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .btn-copy { background-color: #007bff; color: white; border: none; padding: 8px 12px; font-size: 14px; border-radius: 4px; cursor: pointer; white-space: nowrap; font-weight: bold; }
+        .btn-copy:disabled { background-color: #cccccc; color: #666666; }
 
-      /* Perbaikan Tabel agar Bisa Di-geser/Scroll ke Samping di HP */
-      .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        margin-top: 20px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 500px;
-      } /* Menjaga tabel tidak gepeng */
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 12px;
-        text-align: left;
-      }
-      th {
-        background-color: #0056b3;
-        color: white;
-      }
-      tr:nth-child(even) {
-        background-color: #f9f9f9;
-      }
-      .btn-copy {
-        background-color: #007bff;
-        padding: 8px 12px;
-        font-size: 14px;
-        width: auto;
-        white-space: nowrap;
-      }
-
-      /* KUNCI RESPONSIF UNTUK LAYAR HP */
-      @media (max-width: 600px) {
-        body {
-          margin: 10px;
-        } /* Mengecilkan jarak luar */
-        .container {
-          padding: 15px;
-        } /* Mengecilkan jarak dalam */
-        h2 {
-          font-size: 20px;
-          text-align: center;
+        /* KUNCI RESPONSIF UNTUK LAYAR HP */
+        @media (max-width: 600px) {
+            body { margin: 10px; } 
+            .container { padding: 15px; } 
+            h2 { font-size: 20px; text-align: center; }
+            p, b, i { font-size: 14px; }
+            button { padding: 14px; font-size: 15px; } 
         }
-        p,
-        b,
-        i {
-          font-size: 14px;
-        }
-        button {
-          padding: 14px;
-          font-size: 15px;
-        } /* Memperbesar tombol biar gampang di-tap jempol */
-      }
     </style>
-  </head>
-  <body>
-    <div class="container">
-      <h2>🎙️ Kalkulator Pesanan Berbasis Suara</h2>
-      <p>Cara pakai: Klik tombol di bawah, lalu ucapkan format: <b>"[Nama Barang] [Angka] dus"</b>.<br />Contoh: <i>"Sosis hemato bakar 2 dus"</i> atau <i>"Fiesta nugget 3 dus"</i></p>
+</head>
+<body>
 
-      <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Pesanan)</button>
-      <div class="status" id="status-text">Status: Siap digunakan.</div>
+<div class="container">
+    <h2>🎙️ Kalkulator Pesanan Berbasis Suara</h2>
+    <p>Cara pakai: Klik tombol di bawah, lalu ucapkan format: <b>"[Nama Barang] [Angka] dus"</b>.<br>Contoh: <i>"Sosis hemato bakar 2 dus"</i> atau <i>"Fiesta nugget 3 dus"</i></p>
+    
+    <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Pesanan)</button>
+    <div class="status" id="status-text">Status: Sedang memuat data produk...</div>
 
-      <h3>📋 Tabel Hasil Konversi Pesanan</h3>
-      <div class="table-responsive">
+    <h3>📋 Tabel Hasil Konversi Pesanan</h3>
+    <div class="table-responsive">
         <table>
-          <thead>
-            <tr>
-              <th>Nama Barang</th>
-              <th>Jumlah (Dus)</th>
-              <th>Total (Pack)</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tabel-body"></tbody>
+            <thead>
+                <tr>
+                    <th>Nama Barang</th>
+                    <th>Jumlah (Dus/Kresek)</th>
+                    <th>Total (Pack)</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tabel-body">
+                </tbody>
         </table>
-      </div>
     </div>
+</div>
 
-    <script>
-      // 1. DATABASE BARANG (Simulasi dari 260+ produkmu)
-      const databaseBarang = [
-        { nama: "Sosis Hemato Bakar", isiPerDus: 10 },
-        { nama: "Fiesta Nugget", isiPerDus: 12 },
-        { nama: "Champ Sosis Goreng", isiPerDus: 15 },
-        { nama: "Belfoods Chicken Nugget", isiPerDus: 8 },
-      ];
+<script>
+    // 1. DATABASE BARANG (Dimuat otomatis dari products.json)
+    let databaseBarang = [];
 
-      // 2. SETUP SPEECH RECOGNITION (Fitur Suara Browser)
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("Browser kamu tidak mendukung fitur suara. Silakan gunakan Google Chrome atau MS Edge terbaru.");
-      }
+    async function ambilDataProduk() {
+        try {
+            const response = await fetch('products.json');
+            if (!response.ok) {
+                throw new Error('Gagal mengambil file JSON');
+            }
+            databaseBarang = await response.json();
+            document.getElementById('status-text').innerText = "Status: Siap! 260+ Produk Berhasil Dimuat.";
+        } catch (error) {
+            console.error("Eror:", error);
+            document.getElementById('status-text').innerText = "Status: Gagal memuat data produk! (Gunakan Vercel/HTTPS)";
+        }
+    }
 
-      const recognition = new SpeechRecognition();
-      recognition.lang = "id-ID"; // Set Bahasa Indonesia
-      recognition.interimResults = false;
+    // Jalankan load data produk saat web dibuka
+    ambilDataProduk();
 
-      const btnBicara = document.getElementById("btn-bicara");
-      const statusText = document.getElementById("status-text");
-      const tabelBody = document.getElementById("tabel-body");
+    // 2. SETUP SPEECH RECOGNITION (Fitur Suara Browser)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Browser kamu tidak mendukung fitur suara. Silakan gunakan Google Chrome (Android/Laptop) atau Safari (iOS/iPhone).");
+    }
 
-      btnBicara.addEventListener("click", () => {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID'; 
+    recognition.interimResults = false;
+
+    const btnBicara = document.getElementById('btn-bicara');
+    const statusText = document.getElementById('status-text');
+    const tabelBody = document.getElementById('tabel-body');
+
+    btnBicara.addEventListener('click', () => {
         recognition.start();
         statusText.innerText = "Status: Mendengarkan... Silakan bicara sekarang.";
         btnBicara.disabled = true;
-      });
+    });
 
-      // 3. LOGIKA SAAT SUARA SELESAI DIPROSES
-      recognition.onresult = function (event) {
+    // 3. LOGIKA UTAMA SAAT SUARA SELESAI DIPROSES
+    recognition.onresult = function(event) {
         btnBicara.disabled = false;
         statusText.innerText = "Status: Memproses suara...";
-
-        // Ambil teks hasil ucapan dan ubah jadi huruf kecil semua
+        
         const hasilSuara = event.results[0][0].transcript.toLowerCase();
         statusText.innerText = `Kamu mengucapkan: "${hasilSuara}"`;
 
-        // Ekstrak angka dari teks (Contoh: "2" dari "sosis hemato bakar 2 dus")
+        // Ekstrak angka jumlah dari ucapan
         const matchAngka = hasilSuara.match(/\d+/);
         if (!matchAngka) {
-          alert("Jumlah dus tidak terdengar jelas. Coba sebutkan angkanya dengan tegas.");
-          return;
+            alert("Jumlah pesanan tidak terdengar jelas. Coba sebutkan angkanya dengan tegas.");
+            return;
         }
-        const jumlahDus = parseInt(matchAngka[0]);
+        const jumlahInput = parseInt(matchAngka[0]);
 
-        // Cari barang yang namanya paling mirip di database
+        // Cari pencocokan produk di database
         let barangDitemukan = null;
         for (let barang of databaseBarang) {
-          if (hasilSuara.includes(barang.nama.toLowerCase())) {
-            barangDitemukan = barang;
-            break;
-          }
+            if (hasilSuara.includes(barang.nama.toLowerCase())) {
+                barangDitemukan = barang;
+                break;
+            }
         }
 
         if (barangDitemukan) {
-          // Hitung konversi pack otomatis
-          const totalPack = jumlahDus * barangDitemukan.isiPerDus;
-
-          // Masukkan baris baru ke dalam tabel
-          const row = document.createElement("tr");
-          row.innerHTML = `
-                <td><b>${barangDitemukan.nama}</b></td>
-                <td>${jumlahDus} Dus</td>
-                <td><mark><b>${totalPack} Pack</b></mark> (Isi: ${barangDitemukan.isiPerDus}/dus)</td>
-                <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
-            `;
-          tabelBody.insertBefore(row, tabelBody.firstChild); // Munculkan di baris paling atas
+            const row = document.createElement('tr');
+            
+            // Cek kondisi highlight (isi ganda/konfirmasi manual)
+            if (barangDitemukan.highlight) {
+                row.innerHTML = `
+                    <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
+                    <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${barangDitemukan.satuan}</td>
+                    <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
+                    <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
+                `;
+            } else {
+                // Perhitungan normal (Isi berupa angka tunggal murni)
+                const totalPack = jumlahInput * parseInt(barangDitemukan.isi);
+                row.innerHTML = `
+                    <td><b>${barangDitemukan.nama}</b></td>
+                    <td>${jumlahInput} ${barangDitemukan.satuan}</td>
+                    <td><mark><b>${totalPack} Pack</b></mark> <small style="color:#777">(Isi: ${barangDitemukan.isi}/pcs)</small></td>
+                    <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
+                `;
+            }
+            
+            // Masukkan data baru di baris paling atas tabel
+            tabelBody.insertBefore(row, tabelBody.firstChild);
         } else {
-          alert("Nama barang tidak dikenali di database. Pastikan pengucapan sesuai merek.");
+            alert("Nama barang tidak dikenali. Pastikan merek/nama produk diucapkan sesuai data.");
         }
-      };
+    };
 
-      recognition.onerror = function () {
+    recognition.onerror = function() {
         btnBicara.disabled = false;
-        statusText.innerText = "Status: Terjadi kesalahan. Coba klik tombol lagi.";
-      };
+        statusText.innerText = "Status: Gagal menangkap suara. Klik tombol untuk mencoba lagi.";
+    };
 
-      // Fungsi pembantu untuk salin angka pack secara instan
-      function copyToClipboard(text) {
+    // Fungsi salin otomatis ke clipboard
+    function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-          alert(`Angka ${text} berhasil di-copy! Tinggal paste (Ctrl+V) di aplikasi kantormu.`);
+            // Memanfaatkan status text sebagai feedback sukses agar tidak mengganggu pakai pop-up alert terus-menerus
+            document.getElementById('status-text').innerText = `Status: Angka ${text} berhasil di-copy!`;
+        }).catch(err => {
+            console.error('Gagal menyalin teks: ', err);
         });
-      }
-    </script>
-  </body>
+    }
+</script>
+
+</body>
 </html>
