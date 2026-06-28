@@ -33,11 +33,8 @@
 <body>
 
 <div class="container">
-    <h2>🎙️ Kalkulator Pesanan Suara (Multi-Produk Berantai)</h2>
-    <p>Sekarang kamu bisa menyebutkan banyak pesanan sekaligus menggunakan kata hubung <b>dan / lalu / terus / sama</b> dalam satu nafas!</p>
-    <p style="background: #e9ecef; padding: 10px; border-radius: 5px; font-size: 14px;">
-        💡 <i>Contoh: "Sosis hemato 2 dus <b>dan</b> fiesta nugget 1 dus <b>lalu</b> umami tempura 5 pack"</i>
-    </p>
+    <h2>🎙️ Kalkulator Pesanan Suara (Auto-Konversi Dus)</h2>
+    <p>Aplikasi ini otomatis menghitung total pack untuk sistem kantor, sekaligus memecah jumlah dus utuh + eceran untuk panduan loading gudang.</p>
     
     <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Semua Pesanan)</button>
     <div class="status" id="status-text">Status: Sedang memuat data produk...</div>
@@ -48,8 +45,9 @@
             <thead>
                 <tr>
                     <th>Nama Barang</th>
-                    <th>Jumlah Pesanan</th>
-                    <th>Total (Pack)</th>
+                    <th>Jumlah Input</th>
+                    <th>Total Aplikasi Kantor</th>
+                    <th>📦 Panduan Loading Gudang</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -104,39 +102,31 @@
         let hasilSuaraRaw = event.results[0][0].transcript.toLowerCase();
         statusText.innerText = `Kamu mengucapkan: "${hasilSuaraRaw}"`;
 
-        // ========================================================
-        // KUNCI MULTI-PRODUK: Pecah teks panjang menjadi potongan pesanan
-        // ========================================================
         const daftarTeksPesanan = hasilSuaraRaw.split(/dan|lalu|terus|sama|,/);
         let adaBarangDitemukan = false;
 
-        // Lakukan pengulangan (looping) untuk setiap potongan kalimat pesanan
         daftarTeksPesanan.forEach(pesananTeks => {
             let hasilSuara = pesananTeks.trim();
-            if (!hasilSuara) return; // Lewati jika potongan teks kosong
+            if (!hasilSuara) return; 
 
-            // Normalisasi kata operasional baso
             hasilSuara = hasilSuara.replace(/bakso/g, 'baso'); 
 
-            // Koreksi sebutan kata angka teks menjadi numerik murni
             const kamusAngka = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh'];
             kamusAngka.forEach((kata, angka) => {
                 const regex = new RegExp('\\b' + kata + '\\b', 'g');
                 hasilSuara = hasilSuara.replace(regex, angka);
             });
 
-            // Deteksi jenis eceran
-            const isEceran = hasilSuara.includes('pack') || hasilSuara.includes('pcs') || hasilSuara.includes('biji');
+            const isEceran = hasilSuara.includes('pack') || hasilSuara.includes('pak') || hasilSuara.includes('pax') || hasilSuara.includes('pcs') || hasilSuara.includes('biji');
 
             const matchAngka = hasilSuara.match(/\d+/);
-            if (!matchAngka) return; // Lewati baris ini jika tidak mendeteksi angka sama sekali
+            if (!matchAngka) return; 
             
             const jumlahInput = parseInt(matchAngka[0]);
 
-            // Pencocokan produk pintar per potongan kalimat
             let barangDitemukan = null;
             let skorTertinggi = 0;
-            const ucapanBersih = hasilSuara.replace(/\d+/g, '').replace(/dus|kresek|pack|karung|pcs|biji/g, '').trim();
+            const ucapanBersih = hasilSuara.replace(/\d+/g, '').replace(/dus|kresek|pack|pak|pax|karung|pcs|biji/g, '').trim();
 
             for (let barang of databaseBarang) {
                 const kataData = barang.nama.toLowerCase()
@@ -162,7 +152,6 @@
                 }
             }
 
-            // Jika item ini ditemukan, cetak barisnya ke dalam tabel
             if (barangDitemukan) {
                 adaBarangDitemukan = true;
                 const row = document.createElement('tr');
@@ -171,28 +160,47 @@
                     row.innerHTML = `
                         <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
                         <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${isEceran ? 'Pack' : barangDitemukan.satuan}</td>
-                        <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
+                        <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Bermasalah</b></td>
+                        <td style="background-color: #fff3cd; color: #856404;"><b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
                         <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
                     `;
                 } else {
-                    const totalPack = isEceran ? jumlahInput : (jumlahInput * parseInt(barangDitemukan.isi));
+                    // Hitung total pack murni terlebih dahulu
+                    const isiDus = parseInt(barangDitemukan.isi);
+                    const totalPack = isEceran ? jumlahInput : (jumlahInput * isiDus);
                     const labelSatuan = isEceran ? 'Pack (Eceran)' : barangDitemukan.satuan;
+
+                    // ========================================================
+                    // LOGIKA SAKTI: MECAH TOTAL PACK MENJADI DUS + SISANYA
+                    // ========================================================
+                    const hitungDusUtuh = Math.floor(totalPack / isiDus);
+                    const hitungSisaPackEceran = totalPack % isiDus;
+
+                    let teksPanduanGudang = "";
+                    if (hitungDusUtuh > 0) {
+                        teksPanduanGudang += `<b>${hitungDusUtuh} Dus</b>`;
+                    }
+                    if (hitungSisaPackEceran > 0) {
+                        teksPanduanGudang += (hitungDusUtuh > 0 ? " + " : "") + `<span style="color:#dc3545; font-weight:bold;">${hitungSisaPackEceran} Pack Eceran</span>`;
+                    }
+                    if (teksPanduanGudang === "") teksPanduanGudang = "0 Pack";
+                    // ========================================================
 
                     row.innerHTML = `
                         <td><b>${barangDitemukan.nama}</b></td>
                         <td>${jumlahInput} ${labelSatuan}</td>
-                        <td><mark><b>${totalPack} Pack</b></mark> ${isEceran ? '' : `<small style="color:#777">(Isi: ${barangDitemukan.isi}/pcs)</small>`}</td>
+                        <td><mark><b>${totalPack} Pack</b></mark> <small style="color:#777">(Isi: ${barangDitemukan.isi}/dus)</small></td>
+                        <td style="background-color: #e8f5e9; color: #2e7d32;">${teksPanduanGudang}</td>
                         <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
                     `;
                 }
                 
-                // Masukkan data baru di baris paling atas tabel secara berurutan
                 tabelBody.insertBefore(row, tabelBody.firstChild);
             }
         });
 
         if (!adaBarangDitemukan) {
-            alert("Tidak ada satu pun nama barang yang dikenali. Coba sebutkan ulang mereknya dengan jelas.");
+            alert("Tidak ada nama barang yang dikenali. Coba ulangi mereknya dengan jelas.");
         }
     };
 
