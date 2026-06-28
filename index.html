@@ -33,11 +33,13 @@
 <body>
 
 <div class="container">
-    <h2>🎙️ Kalkulator Pesanan Berbasis Suara (Grosir & Eceran)</h2>
-    <p>Format Grosir (Dus/Kresek): <b>"[Nama Barang] [Angka] dus"</b> $\rightarrow$ <i>Otomatis dikalikan isi dus</i><br>
-       Format Eceran (Pack/Pcs): <b>"[Nama Barang] [Angka] pack"</b> $\rightarrow$ <i>Langsung input angka murni</i></p>
+    <h2>🎙️ Kalkulator Pesanan Suara (Multi-Produk Berantai)</h2>
+    <p>Sekarang kamu bisa menyebutkan banyak pesanan sekaligus menggunakan kata hubung <b>dan / lalu / terus / sama</b> dalam satu nafas!</p>
+    <p style="background: #e9ecef; padding: 10px; border-radius: 5px; font-size: 14px;">
+        💡 <i>Contoh: "Sosis hemato 2 dus <b>dan</b> fiesta nugget 1 dus <b>lalu</b> umami tempura 5 pack"</i>
+    </p>
     
-    <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Pesanan)</button>
+    <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Semua Pesanan)</button>
     <div class="status" id="status-text">Status: Sedang memuat data produk...</div>
 
     <h3>📋 Tabel Hasil Konversi Pesanan</h3>
@@ -91,94 +93,106 @@
 
     btnBicara.addEventListener('click', () => {
         recognition.start();
-        statusText.innerText = "Status: Mendengarkan... Silakan bicara sekarang.";
+        statusText.innerText = "Status: Mendengarkan... Silakan sebutkan semua pesanan Anda.";
         btnBicara.disabled = true;
     });
 
     recognition.onresult = function(event) {
         btnBicara.disabled = false;
-        statusText.innerText = "Status: Memproses suara...";
+        statusText.innerText = "Status: Memproses rangkaian suara...";
         
-        let hasilSuara = event.results[0][0].transcript.toLowerCase();
-        
-        // 1. NORMALISASI KATA OPERASIONAL UTAMA
-        hasilSuara = hasilSuara.replace(/bakso/g, 'baso'); 
+        let hasilSuaraRaw = event.results[0][0].transcript.toLowerCase();
+        statusText.innerText = `Kamu mengucapkan: "${hasilSuaraRaw}"`;
 
-        // 2. KOREKSI RUMUS: Ubah sebutan angka teks menjadi angka numerik murni
-        const kamusAngka = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh'];
-        kamusAngka.forEach((kata, angka) => {
-            const regex = new RegExp('\\b' + kata + '\\b', 'g');
-            hasilSuara = hasilSuara.replace(regex, angka);
+        // ========================================================
+        // KUNCI MULTI-PRODUK: Pecah teks panjang menjadi potongan pesanan
+        // ========================================================
+        const daftarTeksPesanan = hasilSuaraRaw.split(/dan|lalu|terus|sama|,/);
+        let adaBarangDitemukan = false;
+
+        // Lakukan pengulangan (looping) untuk setiap potongan kalimat pesanan
+        daftarTeksPesanan.forEach(pesananTeks => {
+            let hasilSuara = pesananTeks.trim();
+            if (!hasilSuara) return; // Lewati jika potongan teks kosong
+
+            // Normalisasi kata operasional baso
+            hasilSuara = hasilSuara.replace(/bakso/g, 'baso'); 
+
+            // Koreksi sebutan kata angka teks menjadi numerik murni
+            const kamusAngka = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh'];
+            kamusAngka.forEach((kata, angka) => {
+                const regex = new RegExp('\\b' + kata + '\\b', 'g');
+                hasilSuara = hasilSuara.replace(regex, angka);
+            });
+
+            // Deteksi jenis eceran
+            const isEceran = hasilSuara.includes('pack') || hasilSuara.includes('pcs') || hasilSuara.includes('biji');
+
+            const matchAngka = hasilSuara.match(/\d+/);
+            if (!matchAngka) return; // Lewati baris ini jika tidak mendeteksi angka sama sekali
+            
+            const jumlahInput = parseInt(matchAngka[0]);
+
+            // Pencocokan produk pintar per potongan kalimat
+            let barangDitemukan = null;
+            let skorTertinggi = 0;
+            const ucapanBersih = hasilSuara.replace(/\d+/g, '').replace(/dus|kresek|pack|karung|pcs|biji/g, '').trim();
+
+            for (let barang of databaseBarang) {
+                const kataData = barang.nama.toLowerCase()
+                    .replace(/bakso/g, 'baso')
+                    .replace(/500gr|250gr|1kg|2kg|750gr|640gr|375gr|450gr|550gr|280gr|315gr|1250gr|850gr|1050gr|465gr|900gr|isi|\d+/g, '')
+                    .split(' ')
+                    .filter(w => w.trim().length > 1);
+
+                let jumlahKataCocok = 0;
+                for (let kata of kataData) {
+                    if (ucapanBersih.includes(kata)) {
+                        jumlahKataCocok++;
+                    }
+                }
+
+                if (jumlahKataCocok > skorTertinggi && jumlahKataCocok >= 1) {
+                    skorTertinggi = jumlahKataCocok;
+                    barangDitemukan = barang;
+                } else if (jumlahKataCocok === skorTertinggi && skorTertinggi >= 1 && barangDitemukan) {
+                    if (barang.nama.length < barangDitemukan.nama.length) {
+                        barangDitemukan = barang; 
+                    }
+                }
+            }
+
+            // Jika item ini ditemukan, cetak barisnya ke dalam tabel
+            if (barangDitemukan) {
+                adaBarangDitemukan = true;
+                const row = document.createElement('tr');
+                
+                if (barangDitemukan.highlight) {
+                    row.innerHTML = `
+                        <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
+                        <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${isEceran ? 'Pack' : barangDitemukan.satuan}</td>
+                        <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
+                        <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
+                    `;
+                } else {
+                    const totalPack = isEceran ? jumlahInput : (jumlahInput * parseInt(barangDitemukan.isi));
+                    const labelSatuan = isEceran ? 'Pack (Eceran)' : barangDitemukan.satuan;
+
+                    row.innerHTML = `
+                        <td><b>${barangDitemukan.nama}</b></td>
+                        <td>${jumlahInput} ${labelSatuan}</td>
+                        <td><mark><b>${totalPack} Pack</b></mark> ${isEceran ? '' : `<small style="color:#777">(Isi: ${barangDitemukan.isi}/pcs)</small>`}</td>
+                        <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
+                    `;
+                }
+                
+                // Masukkan data baru di baris paling atas tabel secara berurutan
+                tabelBody.insertBefore(row, tabelBody.firstChild);
+            }
         });
-        
-        statusText.innerText = `Kamu mengucapkan (Disinkronkan): "${hasilSuara}"`;
 
-        // Deteksi apakah user minta eceran (pack/pcs/biji)
-        const isEceran = hasilSuara.includes('pack') || hasilSuara.includes('pcs') || hasilSuara.includes('biji');
-
-        const matchAngka = hasilSuara.match(/\d+/);
-        if (!matchAngka) {
-            alert("Jumlah pesanan tidak terdengar jelas. Coba sebutkan angkanya dengan tegas.");
-            return;
-        }
-        const jumlahInput = parseInt(matchAngka[0]);
-
-        // 3. LOGIKA PENCOCOKAN PRODUK PINTAR
-        let barangDitemukan = null;
-        let skorTertinggi = 0;
-
-        const ucapanBersih = hasilSuara.replace(/\d+/g, '').replace(/dus|kresek|pack|karung|pcs|biji/g, '').trim();
-
-        for (let barang of databaseBarang) {
-            const kataData = barang.nama.toLowerCase()
-                .replace(/bakso/g, 'baso')
-                .replace(/500gr|250gr|1kg|2kg|750gr|640gr|375gr|450gr|550gr|280gr|315gr|1250gr|850gr|1050gr|465gr|900gr|isi|\d+/g, '')
-                .split(' ')
-                .filter(w => w.trim().length > 1);
-
-            let jumlahKataCocok = 0;
-            for (let kata of kataData) {
-                if (ucapanBersih.includes(kata)) {
-                    jumlahKataCocok++;
-                }
-            }
-
-            if (jumlahKataCocok > skorTertinggi && jumlahKataCocok >= 1) {
-                skorTertinggi = jumlahKataCocok;
-                barangDitemukan = barang;
-            } else if (jumlahKataCocok === skorTertinggi && skorTertinggi >= 1 && barangDitemukan) {
-                if (barang.nama.length < barangDitemukan.nama.length) {
-                    barangDitemukan = barang; 
-                }
-            }
-        }
-
-        // 4. TAMPILKAN HASILNYA KE TABEL
-        if (barangDitemukan) {
-            const row = document.createElement('tr');
-            
-            if (barangDitemukan.highlight) {
-                row.innerHTML = `
-                    <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
-                    <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${isEceran ? 'Pack' : barangDitemukan.satuan}</td>
-                    <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
-                    <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
-                `;
-            } else {
-                const totalPack = isEceran ? jumlahInput : (jumlahInput * parseInt(barangDitemukan.isi));
-                const labelSatuan = isEceran ? 'Pack (Eceran)' : barangDitemukan.satuan;
-
-                row.innerHTML = `
-                    <td><b>${barangDitemukan.nama}</b></td>
-                    <td>${jumlahInput} ${labelSatuan}</td>
-                    <td><mark><b>${totalPack} Pack</b></mark> ${isEceran ? '' : `<small style="color:#777">(Isi: ${barangDitemukan.isi}/pcs)</small>`}</td>
-                    <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
-                `;
-            }
-            
-            tabelBody.insertBefore(row, tabelBody.firstChild);
-        } else {
-            alert("Nama barang tidak dikenali. Coba ulangi dengan merek yang jelas.");
+        if (!adaBarangDitemukan) {
+            alert("Tidak ada satu pun nama barang yang dikenali. Coba sebutkan ulang mereknya dengan jelas.");
         }
     };
 
