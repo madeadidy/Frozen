@@ -46,7 +46,7 @@
             <thead>
                 <tr>
                     <th>Nama Barang</th>
-                    <th>Jumlah Input</th>
+                    <th>Jumlah Pesanan</th>
                     <th>Total (Pack)</th>
                     <th>Aksi</th>
                 </tr>
@@ -100,11 +100,20 @@
         statusText.innerText = "Status: Memproses suara...";
         
         let hasilSuara = event.results[0][0].transcript.toLowerCase();
-        hasilSuara = hasilSuara.replace(/bakso/g, 'baso'); 
         
-        statusText.innerText = `Kamu mengucapkan: "${hasilSuara}"`;
+        // 1. NORMALISASI KATA OPERASIONAL UTAMA
+        hasilSuara = hasilSuara.replace(/bakso/g, 'baso'); 
 
-        // 1. DETEKSI APAKAH USER MINTA ECERAN (PACK/PCS/BIJI)
+        // 2. KOREKSI RUMUS: Ubah sebutan angka teks menjadi angka numerik murni
+        const kamusAngka = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh'];
+        kamusAngka.forEach((kata, angka) => {
+            const regex = new RegExp('\\b' + kata + '\\b', 'g');
+            hasilSuara = hasilSuara.replace(regex, angka);
+        });
+        
+        statusText.innerText = `Kamu mengucapkan (Disinkronkan): "${hasilSuara}"`;
+
+        // Deteksi apakah user minta eceran (pack/pcs/biji)
         const isEceran = hasilSuara.includes('pack') || hasilSuara.includes('pcs') || hasilSuara.includes('biji');
 
         const matchAngka = hasilSuara.match(/\d+/);
@@ -114,7 +123,7 @@
         }
         const jumlahInput = parseInt(matchAngka[0]);
 
-        // 2. LOGIKA PENCOCOKAN PRODUK PINTAR
+        // 3. LOGIKA PENCOCOKAN PRODUK PINTAR
         let barangDitemukan = null;
         let skorTertinggi = 0;
 
@@ -144,12 +153,11 @@
             }
         }
 
-        // 3. TAMPILKAN HASILNYA KE TABEL
+        // 4. TAMPILKAN HASILNYA KE TABEL
         if (barangDitemukan) {
             const row = document.createElement('tr');
             
             if (barangDitemukan.highlight) {
-                // Kondisi barang bermasalah / butuh cek manual
                 row.innerHTML = `
                     <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
                     <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${isEceran ? 'Pack' : barangDitemukan.satuan}</td>
@@ -157,8 +165,6 @@
                     <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
                 `;
             } else {
-                // Kondisi perhitungan normal
-                // JIKALAU ECERAN, MAKA TIDAK DIKALI (LANGSUNG AMBIL ANGKA INPUTNYA)
                 const totalPack = isEceran ? jumlahInput : (jumlahInput * parseInt(barangDitemukan.isi));
                 const labelSatuan = isEceran ? 'Pack (Eceran)' : barangDitemukan.satuan;
 
