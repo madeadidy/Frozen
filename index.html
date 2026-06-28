@@ -17,24 +17,16 @@
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #0056b3; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        .btn-copy { background-color: #007bff; color: white; border: none; padding: 8px 12px; font-size: 14px; border-radius: 4px; cursor: pointer; white-space: nowrap; font-weight: bold; }
-        .btn-copy:disabled { background-color: #cccccc; color: #666666; }
-
-        /* KUNCI RESPONSIF UNTUK LAYAR HP */
-        @media (max-width: 600px) {
-            body { margin: 10px; } 
-            .container { padding: 15px; } 
-            h2 { font-size: 20px; text-align: center; }
-            p, b, i { font-size: 14px; }
-            button { padding: 14px; font-size: 15px; } 
-        }
+        
+        /* Tombol Hapus Baru di Sebelah Kiri */
+        .btn-delete { background-color: #dc3545; color: white; border: none; padding: 6px 10px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎙️ Kalkulator Pesanan Suara (Auto-Konversi Dus)</h2>
-    <p>Aplikasi ini otomatis menghitung total pack untuk sistem kantor, sekaligus memecah jumlah dus utuh + eceran untuk panduan loading gudang.</p>
+    <h2>🎙️ Kalkulator Pesanan Suara (Tata Letak Baru)</h2>
+    <p>Gunakan kata hubung <b>dan / lalu / terus / sama</b> untuk menyebutkan banyak pesanan sekaligus.</p>
     
     <button id="btn-bicara">🎤 Mulai Bicara (Sebutkan Semua Pesanan)</button>
     <div class="status" id="status-text">Status: Sedang memuat data produk...</div>
@@ -44,11 +36,11 @@
         <table>
             <thead>
                 <tr>
+                    <th style="width: 80px;">Aksi</th>
                     <th>Nama Barang</th>
-                    <th>Jumlah Input</th>
+                    <th>Jumlah Pesanan</th>
                     <th>Total Aplikasi Kantor</th>
                     <th>📦 Panduan Loading Gudang</th>
-                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody id="tabel-body">
@@ -156,23 +148,21 @@
                 adaBarangDitemukan = true;
                 const row = document.createElement('tr');
                 
+                // Kondisi A: Barang Bermasalah / Butuh Sorotan (Highlight)
                 if (barangDitemukan.highlight) {
                     row.innerHTML = `
+                        <td style="background-color: #fff3cd;"><button class="btn-delete" onclick="this.closest('tr').remove()">❌ Hapus</button></td>
                         <td style="background-color: #fff3cd; color: #856404;"><b>${barangDitemukan.nama}</b></td>
                         <td style="background-color: #fff3cd; color: #856404;">${jumlahInput} ${isEceran ? 'Pack' : barangDitemukan.satuan}</td>
                         <td style="background-color: #fff3cd; color: #856404;">⚠️ <b>Bermasalah</b></td>
                         <td style="background-color: #fff3cd; color: #856404;"><b>Cek Manual (Isi: ${barangDitemukan.isi})</b></td>
-                        <td style="background-color: #fff3cd; color: #856404;"><button class="btn-copy" disabled>📋 Copy</button></td>
                     `;
                 } else {
-                    // Hitung total pack murni terlebih dahulu
+                    // Kondisi B: Perhitungan normal
                     const isiDus = parseInt(barangDitemukan.isi);
                     const totalPack = isEceran ? jumlahInput : (jumlahInput * isiDus);
                     const labelSatuan = isEceran ? 'Pack (Eceran)' : barangDitemukan.satuan;
 
-                    // ========================================================
-                    // LOGIKA SAKTI: MECAH TOTAL PACK MENJADI DUS + SISANYA
-                    // ========================================================
                     const hitungDusUtuh = Math.floor(totalPack / isiDus);
                     const hitungSisaPackEceran = totalPack % isiDus;
 
@@ -184,14 +174,13 @@
                         teksPanduanGudang += (hitungDusUtuh > 0 ? " + " : "") + `<span style="color:#dc3545; font-weight:bold;">${hitungSisaPackEceran} Pack Eceran</span>`;
                     }
                     if (teksPanduanGudang === "") teksPanduanGudang = "0 Pack";
-                    // ========================================================
 
                     row.innerHTML = `
+                        <td><button class="btn-delete" onclick="this.closest('tr').remove()">❌ Hapus</button></td>
                         <td><b>${barangDitemukan.nama}</b></td>
                         <td>${jumlahInput} ${labelSatuan}</td>
                         <td><mark><b>${totalPack} Pack</b></mark> <small style="color:#777">(Isi: ${barangDitemukan.isi}/dus)</small></td>
                         <td style="background-color: #e8f5e9; color: #2e7d32;">${teksPanduanGudang}</td>
-                        <td><button class="btn-copy" onclick="copyToClipboard('${totalPack}')">📋 Copy Pack</button></td>
                     `;
                 }
                 
@@ -208,14 +197,6 @@
         btnBicara.disabled = false;
         statusText.innerText = "Status: Gagal menangkap suara. Klik tombol untuk mencoba lagi.";
     };
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            document.getElementById('status-text').innerText = `Status: Angka ${text} berhasil di-copy!`;
-        }).catch(err => {
-            console.error('Gagal menyalin teks: ', err);
-        });
-    }
 </script>
 
 </body>
